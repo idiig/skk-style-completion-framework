@@ -1,0 +1,207 @@
+#+title: skk-style-completion-framework
+
+* 中文
+
+** 简介
+
+这个仓库提供一个 Emacs Lisp 的三阶段输入法补全协议，以及一个面向 =pyim= 的 SKK 风格实现。
+
+- =skk-style-completion-framework.el= 提供通用的 completion backend 协议。
+- =pyim-skk-style.el= 把这个协议接到 =pyim=，实现类似 SKK 的大写启动、补全预览和候选确认流程。
+
+** Emacs 用法
+
+把包加入 Emacs 的 =load-path= 后加载：
+
+#+begin_src emacs-lisp
+(require 'skk-style-completion-framework)
+(require 'pyim-skk-style)
+#+end_src
+
+=pyim-skk-style.el= 在加载时会安装对应的 =pyim= advice 和 key binding。使用前请先按你自己的配置启用并配置 =pyim=。
+
+** Nix flake 用法
+
+这个 flake 导出默认 Emacs package：
+
+#+begin_src sh
+nix build .#skk-style-completion-framework
+#+end_src
+
+在另一个 flake 中直接引用：
+
+#+begin_src nix
+{
+  inputs.skk-style-completion-framework.url = "github:USER/skk-style-completion-framework";
+
+  outputs = { nixpkgs, skk-style-completion-framework, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      packages.${system}.emacs = pkgs.emacsWithPackages (epkgs: [
+        skk-style-completion-framework.packages.${system}.default
+      ]);
+    };
+}
+#+end_src
+
+如果你想把它放进自己的 =emacsPackages= 作用域，使用本 flake 导出的 Emacs overlay：
+
+#+begin_src nix
+let
+  epkgs = pkgs.emacsPackages.overrideScope
+    skk-style-completion-framework.emacsOverlays.default;
+in
+epkgs.emacsWithPackages (ps: [
+  ps.skk-style-completion-framework
+])
+#+end_src
+
+** flake-parts 引用方法
+
+在 =flake-parts= 项目中，可以直接 import 这个 flake 的模块。模块会在每个 system 下提供 =packages.skk-style-completion-framework=。
+
+#+begin_src nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    skk-style-completion-framework.url = "github:USER/skk-style-completion-framework";
+  };
+
+  outputs = inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.skk-style-completion-framework.flakeModules.default
+      ];
+
+      systems = [ "x86_64-linux" "aarch64-darwin" ];
+
+      perSystem = { pkgs, config, ... }: {
+        packages.emacs = pkgs.emacsWithPackages (_epkgs: [
+          config.packages.skk-style-completion-framework
+        ]);
+      };
+    };
+}
+#+end_src
+
+如果你的 Emacs 不是 =pkgs.emacs= 对应的默认 package set，优先使用 =emacsOverlays.default= 挂到你自己的 =emacsPackagesFor= 结果上：
+
+#+begin_src nix
+perSystem = { pkgs, inputs', ... }:
+let
+  epkgs = (pkgs.emacsPackagesFor pkgs.emacs30).overrideScope
+    inputs'.skk-style-completion-framework.emacsOverlays.default;
+in
+{
+  packages.emacs = epkgs.emacsWithPackages (ps: [
+    ps.skk-style-completion-framework
+  ]);
+}
+#+end_src
+
+* English
+
+** Overview
+
+This repository provides an Emacs Lisp three-stage completion protocol for composing input methods, plus a SKK-style integration for =pyim=.
+
+- =skk-style-completion-framework.el= provides the generic completion backend protocol.
+- =pyim-skk-style.el= connects that protocol to =pyim= and implements SKK-like shifted start keys, completion preview, and candidate confirmation behavior.
+
+** Emacs Usage
+
+After adding the package to Emacs =load-path=, load it with:
+
+#+begin_src emacs-lisp
+(require 'skk-style-completion-framework)
+(require 'pyim-skk-style)
+#+end_src
+
+=pyim-skk-style.el= installs its =pyim= advice and key bindings when it is loaded. Configure and enable =pyim= in your normal Emacs configuration first.
+
+** Nix Flake Usage
+
+This flake exports the Emacs package as the default package:
+
+#+begin_src sh
+nix build .#skk-style-completion-framework
+#+end_src
+
+To use it from another flake:
+
+#+begin_src nix
+{
+  inputs.skk-style-completion-framework.url = "github:USER/skk-style-completion-framework";
+
+  outputs = { nixpkgs, skk-style-completion-framework, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      packages.${system}.emacs = pkgs.emacsWithPackages (epkgs: [
+        skk-style-completion-framework.packages.${system}.default
+      ]);
+    };
+}
+#+end_src
+
+To add it to your own =emacsPackages= scope, use the exported Emacs overlay:
+
+#+begin_src nix
+let
+  epkgs = pkgs.emacsPackages.overrideScope
+    skk-style-completion-framework.emacsOverlays.default;
+in
+epkgs.emacsWithPackages (ps: [
+  ps.skk-style-completion-framework
+])
+#+end_src
+
+** flake-parts Usage
+
+In a =flake-parts= project, import this flake's module directly. The module exposes =packages.skk-style-completion-framework= for every configured system.
+
+#+begin_src nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    skk-style-completion-framework.url = "github:USER/skk-style-completion-framework";
+  };
+
+  outputs = inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.skk-style-completion-framework.flakeModules.default
+      ];
+
+      systems = [ "x86_64-linux" "aarch64-darwin" ];
+
+      perSystem = { pkgs, config, ... }: {
+        packages.emacs = pkgs.emacsWithPackages (_epkgs: [
+          config.packages.skk-style-completion-framework
+        ]);
+      };
+    };
+}
+#+end_src
+
+If your Emacs is not the default =pkgs.emacs= package set, prefer attaching =emacsOverlays.default= to your own =emacsPackagesFor= result:
+
+#+begin_src nix
+perSystem = { pkgs, inputs', ... }:
+let
+  epkgs = (pkgs.emacsPackagesFor pkgs.emacs30).overrideScope
+    inputs'.skk-style-completion-framework.emacsOverlays.default;
+in
+{
+  packages.emacs = epkgs.emacsWithPackages (ps: [
+    ps.skk-style-completion-framework
+  ]);
+}
+#+end_src
