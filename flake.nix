@@ -9,18 +9,53 @@
   outputs =
     inputs@{ flake-parts, nixpkgs, ... }:
     let
-      pname = "skk-style-completion-framework";
       version = "0.1.0";
 
-      mkPackage =
+      # Only skk-style-completion-framework.el -- the generic 3-stage
+      # (continuation/abbrev/convert) protocol itself, no input-method
+      # dependency.  Anything implementing the same protocol (a future
+      # SKK/wubi backend, say) can depend on just this instead of
+      # dragging in pyim.
+      mkFrameworkPackage =
         emacsPackages:
         emacsPackages.trivialBuild {
-          inherit pname version;
-          src = ./.;
-          packageRequires = [ emacsPackages.pyim ];
+          pname = "skk-style-completion-framework";
+          inherit version;
+          src = builtins.path {
+            path = ./.;
+            name = "skk-style-completion-framework-src";
+            filter = path: type: type == "directory" || baseNameOf path == "skk-style-completion-framework.el";
+          };
+          packageRequires = [ ];
 
           meta = {
-            description = "Generic 3-stage compose-completion protocol with pyim SKK-style integration";
+            description = "Generic 3-stage (continuation/abbrev/convert) compose-completion protocol";
+            license = nixpkgs.lib.licenses.gpl3Plus;
+            platforms = nixpkgs.lib.platforms.all;
+          };
+        };
+
+      # Only pyim-skk-style.el -- pyim's own implementation of that
+      # protocol (SKK-style shifted start keys, completion preview,
+      # candidate confirmation).  Depends on the framework package
+      # above rather than bundling a second copy of its source.
+      mkPyimPackage =
+        emacsPackages:
+        emacsPackages.trivialBuild {
+          pname = "pyim-skk-style";
+          inherit version;
+          src = builtins.path {
+            path = ./.;
+            name = "pyim-skk-style-src";
+            filter = path: type: type == "directory" || baseNameOf path == "pyim-skk-style.el";
+          };
+          packageRequires = [
+            (mkFrameworkPackage emacsPackages)
+            emacsPackages.pyim
+          ];
+
+          meta = {
+            description = "SKK-style pyim integration on top of skk-style-completion-framework";
             license = nixpkgs.lib.licenses.gpl3Plus;
             platforms = nixpkgs.lib.platforms.all;
           };
@@ -35,17 +70,22 @@
       ];
 
       flake = {
-        lib.mkPackage = { emacsPackages }: mkPackage emacsPackages;
+        lib = {
+          mkFrameworkPackage = { emacsPackages }: mkFrameworkPackage emacsPackages;
+          mkPyimPackage = { emacsPackages }: mkPyimPackage emacsPackages;
+        };
 
         emacsOverlays.default = final: _prev: {
-          skk-style-completion-framework = mkPackage final;
+          skk-style-completion-framework = mkFrameworkPackage final;
+          pyim-skk-style = mkPyimPackage final;
         };
 
         flakeModules.default = { ... }: {
           perSystem =
             { pkgs, ... }:
             {
-              packages.skk-style-completion-framework = mkPackage pkgs.emacsPackages;
+              packages.skk-style-completion-framework = mkFrameworkPackage pkgs.emacsPackages;
+              packages.pyim-skk-style = mkPyimPackage pkgs.emacsPackages;
             };
         };
       };
@@ -53,12 +93,14 @@
       perSystem =
         { pkgs, ... }:
         let
-          package = mkPackage pkgs.emacsPackages;
+          framework = mkFrameworkPackage pkgs.emacsPackages;
+          pyimIntegration = mkPyimPackage pkgs.emacsPackages;
         in
         {
-          packages.default = package;
-          packages.skk-style-completion-framework = package;
-          checks.default = package;
+          packages.default = pyimIntegration;
+          packages.skk-style-completion-framework = framework;
+          packages.pyim-skk-style = pyimIntegration;
+          checks.default = pyimIntegration;
         };
     };
 }
