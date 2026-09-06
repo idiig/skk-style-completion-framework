@@ -1021,3 +1021,7 @@ functions to have something real to answer about."
 ;;     (when (string< "" rest)
 ;;       (setq preview (concat preview rest)))
 ;;     (pyim-process-magic-convert preview)))
+
+(provide 'pyim-skk-style)
+
+;;; pyim-skk-style.el ends here
