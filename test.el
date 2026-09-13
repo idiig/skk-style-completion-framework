@@ -5,4 +5,4 @@
 (let ((dir (file-name-directory (or load-file-name buffer-file-name default-directory))))
   (add-to-list 'load-path dir))
 (require 'skk-style-completion-framework)
-(ert-run-tests-interactively "idiig/completion")
+(ert-run-tests-interactively "skk-completion/")
