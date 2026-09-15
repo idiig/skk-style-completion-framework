@@ -856,6 +856,19 @@ end of the list instead of appearing first.")
     (completion-preview-active-mode -1)))
 (add-hook 'pyim-process-ui-hide-hook #'pyim-skk-completion/composing-completion-preview-hide)
 
+;; Shared with any global `completion-preview-active-mode-map' TAB
+;; binding a consuming config sets up for plain (non-pyim) buffers --
+;; `defvar' only supplies these defaults if the symbols aren't already
+;; bound, so a consumer that defines its own `skk-completion/preview-tab'
+;; command (and defvars these first) keeps its own values, and both
+;; that command and the composing-loop wrapper below stay in sync on
+;; the same press count.
+(defvar skk-completion/preview-tab-cycle-limit 3
+  "How many consecutive TAB presses cycle completion-preview candidates
+before TAB escalates to opening the full candidate list instead.")
+(defvar skk-completion/preview-tab-cycle-count 0
+  "Consecutive-press counter for `skk-completion/preview-tab-cycle-limit'.")
+
 ;; TAB cycles through the currently showing CP candidates, mirroring
 ;; the README's global `completion-preview-active-mode-map' binding
 ;; (TAB/<tab> -> `skk-completion/preview-tab', which cycles for the
