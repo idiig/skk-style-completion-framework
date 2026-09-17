@@ -970,9 +970,23 @@ before TAB escalates to opening the full candidate list instead.")
           (pyim-skk-completion/composing-completion-preview-open-list)
         (setq pyim-skk-completion/jianpin-hint-index (1+ pyim-skk-completion/jianpin-hint-index))
         (pyim-process-ui-refresh)))))
+;; `(kbd "TAB")'/`[?\t]' both denote the same char-9 keystroke, which is
+;; all a TTY frame can ever send for the physical Tab key -- there, Tab
+;; and `C-i' are the same byte and genuinely indistinguishable.  A GUI
+;; frame, however, sends the physical Tab key as the distinct `<tab>'
+;; event instead, separate from `C-i' -- same GUI/TTY event-duality as
+;; `[backspace]' vs `"\177"' above.  Since `pyim-mode-map' is installed
+;; as `overriding-terminal-local-map' during composition (see above),
+;; an event it doesn't bind falls through only to the global map, never
+;; back to `completion-preview-active-mode-map' -- so without this
+;; `<tab>' binding, pressing Tab in a GUI frame while composing just
+;; ran whatever the global map's default Tab behavior is instead of
+;; cycling candidates.
 (define-key pyim-mode-map (kbd "TAB")
             #'pyim-skk-completion/composing-completion-preview-cycle)
 (define-key pyim-mode-map [?\t]
+            #'pyim-skk-completion/composing-completion-preview-cycle)
+(define-key pyim-mode-map (kbd "<tab>")
             #'pyim-skk-completion/composing-completion-preview-cycle)
 
 ;; pyim conformance: exercises `skk-completion/backend-pyim' directly,
